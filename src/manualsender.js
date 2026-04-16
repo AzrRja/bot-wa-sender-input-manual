@@ -2,6 +2,11 @@ const fs = require("fs")
 const path = require("path")
 const { delay } = require("@whiskeysockets/baileys")
 
+// 🔥 fungsi delay random
+function randomDelay(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
 module.exports = async function (sock, nomorList, sekolahList, sendProgress) {
     const filePath = path.join(__dirname, "../media/flyer.jpeg")
 
@@ -36,7 +41,7 @@ module.exports = async function (sock, nomorList, sekolahList, sendProgress) {
 
         const pesan = `Assalamu’alaikum Wr. Wb.
 
-Yth. *Bapak/Ibu* Pihak Sekolah
+Yth. *Bapak/Ibu Pimpinan* Pihak Sekolah
 *${sekolah}*
 
 Perkenalkan, kami dari *UKMI - Ar-Rahman* Selaku Pentas Islami 19 ingin mengundang siswa/i dari *${sekolah}* untuk berpartisipasi dalam kegiatan Pentas Islami 19 yang akan diselenggarakan pada:
@@ -76,7 +81,6 @@ Hormat kami,
 *Panitia Pentas Islami 19*`
 
         try {
-            // 🔥 PENTING: await + timeout
             await sock.sendMessage(jid, {
                 image: fs.readFileSync(filePath),
                 caption: pesan
@@ -98,6 +102,15 @@ Hormat kami,
             })
         }
 
-        await delay(7000) // 🔥 lebih aman
+        // 🔥 DELAY RANDOM (10–25 detik)
+        const jeda = randomDelay(10000, 25000)
+        console.log(`⏳ Delay ${jeda / 1000} detik...`)
+        await delay(jeda)
+
+        // 🔥 ISTIRAHAT SETIAP 5 NOMOR
+        if ((i + 1) % 5 === 0) {
+            console.log("☕ Istirahat 1 menit...")
+            await delay(60000)
+        }
     }
 }

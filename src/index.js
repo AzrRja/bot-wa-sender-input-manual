@@ -13,9 +13,10 @@ app.use(express.json())
 app.use(express.static("public"))
 
 let sockGlobal = null
+let currentSock = null
 let clients = []
 
-// ✅ STREAM (ANTI CRASH)
+// 🔥 STREAM REALTIME
 app.get("/stream", (req, res) => {
     res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -24,7 +25,6 @@ app.get("/stream", (req, res) => {
     })
 
     res.write("\n")
-
     clients.push(res)
 
     req.on("close", () => {
@@ -38,6 +38,7 @@ function sendProgress(data) {
     })
 }
 
+// 🔥 START BOT
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState("session")
     const { version } = await fetchLatestBaileysVersion()
@@ -45,8 +46,10 @@ async function startBot() {
     const sock = makeWASocket({
         auth: state,
         version,
-        browser: ["Windows", "Chrome", "120.0.0"]
+        browser: ["Ubuntu", "Chrome", "120.0.0"]
     })
+
+    currentSock = sock
 
     sock.ev.on("creds.update", saveCreds)
 
@@ -71,21 +74,31 @@ async function startBot() {
 
 startBot()
 
-app.post("/kirim", async (req, res) => {
+// 🔥 PAIRING VIA WEB
+app.post("/pairing", async (req, res) => {
     try {
-        const { nomorList, sekolahList } = req.body
+        const { nomor } = req.body
 
-        if (!sockGlobal) {
-            return res.json({ status: false, msg: "WA belum connect" })
-        }
+        const code = await currentSock.requestPairingCode(nomor)
 
-        senderWeb(sockGlobal, nomorList, sekolahList, sendProgress)
-
-        res.json({ status: true })
+        res.json({ status: true, code })
 
     } catch (err) {
         res.json({ status: false, msg: err.message })
     }
+})
+
+// 🔥 KIRIM PESAN
+app.post("/kirim", async (req, res) => {
+    const { nomorList, sekolahList } = req.body
+
+    if (!sockGlobal) {
+        return res.json({ status: false, msg: "WA belum connect" })
+    }
+
+    senderWeb(sockGlobal, nomorList, sekolahList, sendProgress)
+
+    res.json({ status: true })
 })
 
 app.listen(3000, () => {

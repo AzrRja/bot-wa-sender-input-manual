@@ -5,64 +5,28 @@
 <title>WA Sender</title>
 
 <style>
-body {
-    font-family: sans-serif;
-    background: #0f172a;
-    color: white;
-    padding: 20px;
-}
-
-.container {
-    max-width: 900px;
-    margin: auto;
-    background: #1e293b;
-    padding: 20px;
-    border-radius: 12px;
-}
-
-.row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-input {
-    flex: 1;
-    padding: 10px;
-}
-
-button {
-    padding: 10px;
-    cursor: pointer;
-}
-
-.progress {
-    height: 20px;
-    background: #222;
-    margin-top: 10px;
-    border-radius: 10px;
-}
-
-.bar {
-    height: 100%;
-    width: 0%;
-    background: lime;
-    border-radius: 10px;
-}
-
-.result {
-    margin-top: 10px;
-    height: 200px;
-    overflow: auto;
-    background: #111;
-    padding: 10px;
-}
+body { font-family:sans-serif;background:#0f172a;color:white;padding:20px }
+.container { max-width:900px;margin:auto;background:#1e293b;padding:20px;border-radius:10px }
+.row { display:flex;gap:10px;margin-bottom:10px }
+input { flex:1;padding:10px }
+button { padding:10px;margin:5px;cursor:pointer }
+.progress { height:20px;background:#222;margin-top:10px }
+.bar { height:100%;width:0%;background:lime }
+.result { margin-top:10px;height:200px;overflow:auto;background:#111;padding:10px }
 </style>
 </head>
 
 <body>
 
 <div class="container">
+
+<h3>🔑 Login WhatsApp</h3>
+<input id="nomorLogin" placeholder="628xxx">
+<button onclick="pair()">Ambil Pairing</button>
+<div id="pairing"></div>
+
+<hr>
+
 <h2>WA Sender</h2>
 
 <div id="form"></div>
@@ -77,20 +41,19 @@ button {
 </div>
 
 <script>
-let count = 0
+let count=0
 
 function addRow(){
-    const div = document.createElement("div")
-    div.className="row"
-    div.id="row"+count
+    const d=document.createElement("div")
+    d.className="row"
+    d.id="row"+count
 
-    div.innerHTML=`
+    d.innerHTML=`
         <input id="nomor${count}" placeholder="628xxx">
         <input id="sekolah${count}" placeholder="Sekolah">
         <button onclick="removeRow(${count})">X</button>
     `
-
-    document.getElementById("form").appendChild(div)
+    form.appendChild(d)
     count++
 }
 
@@ -99,14 +62,27 @@ function removeRow(i){
 }
 
 function clearAll(){
-    document.getElementById("form").innerHTML=""
-    document.getElementById("result").innerHTML=""
-    document.getElementById("bar").style.width="0%"
+    form.innerHTML=""
+    result.innerHTML=""
+    bar.style.width="0%"
     count=0
     for(let i=0;i<3;i++) addRow()
 }
 
 for(let i=0;i<3;i++) addRow()
+
+async function pair(){
+    let nomor=nomorLogin.value
+
+    let res=await fetch("/pairing",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({nomor})
+    })
+
+    let data=await res.json()
+    pairing.innerText=data.status?data.code:data.msg
+}
 
 async function send(){
     let nomorList=[], sekolahList=[]
@@ -115,18 +91,11 @@ async function send(){
         let n=document.getElementById("nomor"+i)
         let s=document.getElementById("sekolah"+i)
 
-        if(n && s && n.value && s.value){
+        if(n&&s&&n.value&&s.value){
             nomorList.push(n.value)
             sekolahList.push(s.value)
         }
     }
-
-    if(nomorList.length===0){
-        alert("Isi data dulu!")
-        return
-    }
-
-    document.getElementById("result").innerHTML="⏳ Mengirim...\n"
 
     await fetch("/kirim",{
         method:"POST",
@@ -135,21 +104,17 @@ async function send(){
     })
 }
 
-// 🔥 REALTIME
-const es = new EventSource("/stream")
+const es=new EventSource("/stream")
 
-es.onmessage = (e)=>{
+es.onmessage=(e)=>{
     try{
-        const data = JSON.parse(e.data)
+        let d=JSON.parse(e.data)
 
-        let percent = (data.index / data.total) * 100
-        document.getElementById("bar").style.width = percent+"%"
+        let percent=(d.index/d.total)*100
+        bar.style.width=percent+"%"
 
-        document.getElementById("result").innerHTML +=
-            `${data.index}. ${data.sekolah} → ${data.status}\n`
-
-        document.getElementById("result").scrollTop = 99999
-
+        result.innerHTML+=`${d.index}. ${d.sekolah} → ${d.status}<br>`
+        result.scrollTop=99999
     }catch{}
 }
 </script>
