@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>WA Sender</title>
+
+<style>
+body {
+    font-family: sans-serif;
+    background: #0f172a;
+    color: white;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 10px;
+}
+
+button {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.progress {
+    height: 20px;
+    background: #222;
+    margin-top: 10px;
+    border-radius: 10px;
+}
+
+.bar {
+    height: 100%;
+    width: 0%;
+    background: lime;
+    border-radius: 10px;
+}
+
+.result {
+    margin-top: 10px;
+    height: 200px;
+    overflow: auto;
+    background: #111;
+    padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>WA Sender</h2>
+
+<div id="form"></div>
+
+<button onclick="addRow()">Tambah</button>
+<button onclick="clearAll()">Clear</button>
+<button onclick="send()">Kirim</button>
+
+<div class="progress"><div id="bar" class="bar"></div></div>
+<div id="result" class="result"></div>
+
+</div>
+
+<script>
+let count = 0
+
+function addRow(){
+    const div = document.createElement("div")
+    div.className="row"
+    div.id="row"+count
+
+    div.innerHTML=`
+        <input id="nomor${count}" placeholder="628xxx">
+        <input id="sekolah${count}" placeholder="Sekolah">
+        <button onclick="removeRow(${count})">X</button>
+    `
+
+    document.getElementById("form").appendChild(div)
+    count++
+}
+
+function removeRow(i){
+    document.getElementById("row"+i)?.remove()
+}
+
+function clearAll(){
+    document.getElementById("form").innerHTML=""
+    document.getElementById("result").innerHTML=""
+    document.getElementById("bar").style.width="0%"
+    count=0
+    for(let i=0;i<3;i++) addRow()
+}
+
+for(let i=0;i<3;i++) addRow()
+
+async function send(){
+    let nomorList=[], sekolahList=[]
+
+    for(let i=0;i<count;i++){
+        let n=document.getElementById("nomor"+i)
+        let s=document.getElementById("sekolah"+i)
+
+        if(n && s && n.value && s.value){
+            nomorList.push(n.value)
+            sekolahList.push(s.value)
+        }
+    }
+
+    if(nomorList.length===0){
+        alert("Isi data dulu!")
+        return
+    }
+
+    document.getElementById("result").innerHTML="⏳ Mengirim...\n"
+
+    await fetch("/kirim",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({nomorList,sekolahList})
+    })
+}
+
+// 🔥 REALTIME
+const es = new EventSource("/stream")
+
+es.onmessage = (e)=>{
+    try{
+        const data = JSON.parse(e.data)
+
+        let percent = (data.index / data.total) * 100
+        document.getElementById("bar").style.width = percent+"%"
+
+        document.getElementById("result").innerHTML +=
+            `${data.index}. ${data.sekolah} → ${data.status}\n`
+
+        document.getElementById("result").scrollTop = 99999
+
+    }catch{}
+}
+</script>
+
+</body>
+</html>
